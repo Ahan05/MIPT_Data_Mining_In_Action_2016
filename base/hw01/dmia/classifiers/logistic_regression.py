@@ -1,5 +1,6 @@
 import numpy as np
-from scipy import sparse
+import scipy as sp
+from sp import sparse
 
 
 class LogisticRegression:
@@ -11,7 +12,7 @@ class LogisticRegression:
               batch_size=200, verbose=False):
         """
         Train this classifier using stochastic gradient descent.
-
+        
         Inputs:
         - X: N x D array of training data. Each training point is a D-dimensional
              column.
@@ -46,8 +47,9 @@ class LogisticRegression:
             # Hint: Use np.random.choice to generate indices. Sampling with         #
             # replacement is faster than sampling without replacement.              #
             #########################################################################
-
-
+            rnd = np.random.choice(X.shape[0],batch_size , replace=True)
+            X_batch = X[rnd]
+            y_batch = y[rnd]
             #########################################################################
             #                       END OF YOUR CODE                                #
             #########################################################################
@@ -60,8 +62,8 @@ class LogisticRegression:
             # TODO:                                                                 #
             # Update the weights using the gradient and the learning rate.          #
             #########################################################################
-
-
+            self.w = self.w - gradW*learning_rate
+            
             #########################################################################
             #                       END OF YOUR CODE                                #
             #########################################################################
@@ -91,9 +93,12 @@ class LogisticRegression:
         # Implement this method. Store the probabilities of classes in y_proba.   #
         # Hint: It might be helpful to use np.vstack and np.sum                   #
         ###########################################################################
-
-
-
+        y_proba = np.zeros((X.shape[0], 2))
+        
+        #y_proba[:,0] = 1/(1+np.exp(-X.dot(self.w)))
+        #y_proba[:,1] = 1 - y_proba[:,0] 
+        y_proba[:,0] = sp.special.expit(X.dot(self.w)) 
+        y_proba[:,1] = 1 - y_proba[:,0]
         ###########################################################################
         #                           END OF YOUR CODE                              #
         ###########################################################################
@@ -117,7 +122,7 @@ class LogisticRegression:
         # Implement this method. Store the predicted labels in y_pred.            #
         ###########################################################################
         y_proba = self.predict_proba(X, append_bias=True)
-        y_pred = ...
+        y_pred = y_proba[:,:1].round()
 
         ###########################################################################
         #                           END OF YOUR CODE                              #
@@ -138,7 +143,6 @@ class LogisticRegression:
         loss = 0
         # Compute loss and gradient. Your code should not contain python loops.
 
-
         # Right now the loss is a sum over all training examples, but we want it
         # to be an average instead so we divide by num_train.
         # Note that the same thing must be done with gradient.
@@ -146,8 +150,14 @@ class LogisticRegression:
 
         # Add regularization to the loss and gradient.
         # Note that you have to exclude bias term in regularization.
-
-
+        
+        loss = sum( np.log( 1 + np.exp(-X_batch.dot( self.w)*y_batch) ) )/X_batch.shape[0] + reg*sum(self.w**2)
+        #loss = sum( np.logaddexp(0,-X_batch.dot(self.w)*y_batch ))/X_batch.shape[0] + reg*sum(self.w**2)
+        k = np.random.randint(X_batch.shape[0])
+        
+        dw = y_batch[k] * X_batch[k] / (1 + np.exp( -X_batch[k].dot(self.w) * y_batch[k] ) ) + 2*reg*sum(np.absolute(self.w))
+        #dw = y_batch[k] * X_batch[k] * sp.special.expit(-X_batch[k].dot(self.w) * y_batch[k]) + 2*reg*sum(np.absolute(self.w))
+        dw = dw.reshape(self.w.shape[0],)
         return loss, dw
 
     @staticmethod
